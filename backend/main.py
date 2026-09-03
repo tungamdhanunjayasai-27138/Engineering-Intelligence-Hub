@@ -110,6 +110,10 @@ def process():
 def index_documents():
 
     documents = process_documents()
+
+    if documents:
+        clear_document(documents[0]["source"])
+
     store_documents(documents)
 
     return {
@@ -139,56 +143,18 @@ def ask(query: str):
                 "sources": []
             }
 
-        broad_questions = [
-            "what is this document about",
-            "what is the document about",
-            "what does this document contain",
-            "explain this document",
-            "summarize this document",
-            "summary of this document",
-            "give me a summary",
-            "main topic",
-            "main findings",
-            "main conclusions"
-        ]
-
-        query_lower = query.lower().strip()
-
-        is_broad = any(
-            q in query_lower
-            for q in broad_questions
-        )
-
-        # Broad questions → summarize the uploaded document
-        if is_broad:
-
-            text = documents[0]["text"]
-
-            answer = generate_document_summary(text)
-
-            return {
-                "question": query,
-                "answer": answer,
-                "sources": [
-                    {
-                        "source": documents[0]["name"]
-                    }
-                ]
-            }
-
-        # Specific questions → vector search
         vector = create_embedding(query)
 
         results = search_documents(
             vector,
             limit=10,
-            min_score=0.05
+            min_score=0
         )
 
         if not results:
             return {
                 "question": query,
-                "answer": "No information was found in the document.",
+                "answer": "The document does not contain enough information.",
                 "sources": []
             }
 
@@ -216,10 +182,8 @@ def ask(query: str):
         }
 
     except Exception as e:
-
-        print("ERROR:", e)
-
+        print("ERROR:", repr(e))
         raise HTTPException(
             status_code=500,
-            detail="Failed to process the question."
+            detail=str(e)
         )

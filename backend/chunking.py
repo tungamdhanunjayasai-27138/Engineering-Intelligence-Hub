@@ -1,26 +1,22 @@
-def chunk_text(text, size=500, overlap=50):
-    sections = text.split("\n## ")
+def chunk_text(text, size=1000, overlap=150):
+    text = " ".join(text.split())
     chunks = []
 
-    for i, section in enumerate(sections):
-        if i > 0:
-            section = "## " + section
+    start = 0
 
-        section = section.strip()
+    while start < len(text):
+        end = min(start + size, len(text))
 
-        if len(section) <= size:
-            chunks.append(section)
-            continue
+        if end < len(text):
+            cut = text.rfind(". ", start, end)
+            if cut > start:
+                end = cut + 1
 
-        start = 0
+        chunk = text[start:end].strip()
 
-        while start < len(section):
-            end = min(start + size, len(section))
-            chunk = section[start:end].strip()
+        if chunk:
+            chunks.append(chunk)
 
-            if chunk:
-                chunks.append(chunk)
-
-            start += size - overlap
+        start = end - overlap
 
     return chunks
