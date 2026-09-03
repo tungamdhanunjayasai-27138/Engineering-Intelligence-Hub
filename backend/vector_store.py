@@ -1,6 +1,5 @@
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, VectorParams, PointStruct
-import uuid
+from qdrant_client.models import Distance, VectorParams, PointStruct, Filter, FieldCondition, MatchValue
 
 client = QdrantClient(path="data/qdrant")
 
@@ -16,13 +15,31 @@ if not client.collection_exists(COLLECTION_NAME):
     )
 
 
+def clear_document(filename):
+    client.delete(
+        collection_name=COLLECTION_NAME,
+        points_selector=Filter(
+            must=[
+                FieldCondition(
+                    key="source",
+                    match=MatchValue(value=filename)
+                )
+            ]
+        )
+    )
+
+
 def store_documents(documents):
     points = []
 
     for document in documents:
+        point_id = abs(hash(
+            document["source"] + str(document["chunk_id"])
+        )) % (2**63)
+
         points.append(
             PointStruct(
-                id=str(uuid.uuid4()),
+                id=point_id,
                 vector=document["embedding"],
                 payload={
                     "source": document["source"],
@@ -38,7 +55,7 @@ def store_documents(documents):
     )
 
 
-def search_documents(query_vector, limit=10):
+def search_documents(query_vector, limit=10, min_score=0.05):
     results = client.query_points(
         collection_name=COLLECTION_NAME,
         query=query_vector,
@@ -52,4 +69,5 @@ def search_documents(query_vector, limit=10):
             "score": point.score
         }
         for point in results.points
+        if point.score >= min_score
     ]
